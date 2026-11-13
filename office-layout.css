@@ -1,0 +1,110 @@
+.office-layout {
+  --accent: #2c5191;
+  --tint: #eaf0fa;
+  --deep: #213e6d;
+  --acc: var(--accent);
+  --accsoft: var(--tint);
+  --acc-ink: white;
+  max-width: 1136px;
+  padding: 18px clamp(16px, 3.5vw, 48px) 60px;
+  overflow-wrap: anywhere;
+}
+.gov-office.office-layout { --accent: #116154; --tint: #e5f2ed; --deep: #194d44; }
+.office-layout h1, .office-layout h2, .office-layout h3 { word-break: keep-all; }
+.office-layout small { color: var(--mute); font-size: 12px; }
+.office-header { margin: 0 0 6px; }
+.office-brand-row, .office-heading-row, .panel-heading, .report-line, .office-brand, .office-tools, .office-pc {
+  display: flex; align-items: center; gap: 10px;
+}
+.office-brand-row, .office-heading-row, .panel-heading, .report-line { justify-content: space-between; }
+.office-brand { font-size: 15px; font-weight: 700; letter-spacing: -.035em; }
+.office-mark { display: grid; place-items: center; width: 27px; height: 27px; background: var(--deep); color: white; border-radius: 7px; font-size: 20px; line-height: 1; }
+.office-tools { gap: 4px; }
+.office-tools > button, .office-tools summary, .office-formats summary {
+  display: flex; align-items: center; cursor: pointer; list-style: none; background: transparent;
+  border: 0; color: var(--mute); font-size: 13px; padding: 8px 10px; min-height: 42px;
+}
+.office-layout summary::-webkit-details-marker { display: none; }
+.office-tools summary::after, .office-formats summary::after { content: "⌄"; padding-left: 5px; }
+.office-options { position: relative; }
+.office-options-list {
+  position: absolute; z-index: 10; right: 0; top: 100%; min-width: 150px; padding: 6px; display: grid;
+  background: var(--card); box-shadow: 0 6px 18px #182b3f1a; border: 1px solid var(--line); border-radius: 10px;
+}
+.office-options-list button, .office-options-list a { border: 0; text-decoration: none; text-align: left; padding: 9px 12px; color: var(--ink); font: inherit; }
+.office-layout .division-nav { max-width: 440px; gap: 3px; padding: 4px; background: var(--line); border-radius: 12px; margin: 13px 0 19px; }
+.office-layout .division-button { padding: 8px 10px; font-size: 14px; border: 1px solid transparent; background: transparent; color: var(--mute); min-height: 42px; }
+.office-layout .division-button.is-active { border-color: var(--line); background: var(--card); color: var(--accent); box-shadow: 0 1px 3px #16202a16; }
+.office-heading-row h1 { font-size: clamp(24px, 3vw, 32px); line-height: 1.3; letter-spacing: -.055em; }
+.office-pc { color: var(--mute); font-size: 12px; text-decoration: none; white-space: nowrap; gap: 6px; min-height: 40px; }
+.office-pc i { width: 8px; height: 8px; border-radius: 50%; background: #ad7b34; }
+.office-pc i.ready { background: #3b8764; }
+.office-tabs, .office-filter { display: flex; flex-wrap: wrap; }
+.office-tabs { gap: 4px 20px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+.office-tabs button { padding: 12px 6px; color: var(--mute); border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; font-weight: 600; }
+.office-tabs button.selected { color: var(--accent); border-bottom-color: var(--accent); }
+.office-filter { gap: 6px; margin: 0 0 15px; }
+.office-filter button { color: var(--mute); padding: 6px 13px; border-radius: 18px; font-size: 13px; }
+.office-filter .selected { color: var(--accent); background: var(--tint); border-color: var(--accent); }
+.office-home-grid { display: grid; align-items: start; grid-template-columns: minmax(0,1.52fr) minmax(0,1fr); gap: 20px; }
+.office-stack { display: grid; min-width: 0; gap: 16px; }
+.office-panel, .decision-panel, .office-layout .card { min-width: 0; border-radius: 14px; padding: clamp(18px, 2.4vw, 28px); }
+.office-panel { background: var(--card); border: 1px solid var(--line); }
+.panel-heading { flex-wrap: wrap; margin-bottom: 14px; gap: 4px 12px; }
+.panel-heading h2, .office-layout .card h2 { font-size: 18px; letter-spacing: -.045em; margin: 0; }
+.office-panel p, .office-layout .card p { margin: 6px 0 12px; }
+.office-layout .office-link { border: 0; background: transparent; color: var(--accent); padding: 4px 0; font-size: 13px; font-weight: 600; }
+.office-link::after { content: " ›"; }
+.decision-panel { background: var(--deep); color: #fff; }
+.decision-label { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; font-size: 13px; }
+.decision-label span { opacity: .82; font-variant-numeric: tabular-nums; }
+.decision-panel h2 { font-size: clamp(22px, 2.5vw, 29px); letter-spacing: -.055em; margin: 10px 0 16px; }
+.short-list { padding-left: 20px; margin: 0 0 12px; }
+.decision-action { font-size: 14px; font-weight: 700; border: 0; color: #203e6c; background: white; }
+.report-line, .list-row { border-top: 1px solid var(--line); padding: 12px 0; }
+.report-line h3, .grant-row strong { font-size: 15px; }
+.report-line small { display: block; margin-top: 2px; }
+.report-line > :last-child { flex-shrink: 0; }
+.neutral-tag, .deadline-tag { padding: 3px 8px; color: var(--mute); background: var(--bg); font-size: 12px; border-radius: 5px; }
+.deadline-tag { color: var(--accent); background: var(--tint); white-space: nowrap; }
+.grant-priority { border-top: 4px solid var(--deep); }
+.grant-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; text-align: left; padding: 13px 0; width: 100%; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; }
+.grant-row strong { grid-column: 1; } .grant-row small { grid-column: 1; } .grant-row span { grid-row: 1/3; grid-column: 2; align-self: center; }
+.application-counts { display: grid; grid-template-columns: 1fr 1fr; background: var(--tint); border-radius: 9px; }
+.application-counts button { display: grid; padding: 11px; background: transparent; border: 0; color: var(--accent); }
+.application-counts strong { font-size: 25px; font-variant-numeric: tabular-nums; } .application-counts span { font-size: 12px; }
+.report-download { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 12px; gap: 4px; }
+.office-downloads { display: flex; gap: 5px 12px; align-items: flex-start; flex-wrap: wrap; }
+.download-main { color: var(--accent); font-weight: 700; background: var(--tint); border-color: transparent; }
+.download-main:disabled { opacity: .85; color: var(--mute); background: var(--bg); }
+.office-formats > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.office-formats > div button { font-size: 13px; }
+.office-empty { padding: 15px 0; color: var(--mute); }
+.office-reading { margin-top: 14px; background: var(--card); border-top: 1px solid var(--line); padding: 12px 0 4px; max-width: 86ch; }
+.office-layout .doc-title { margin: 14px 0; font-size: 18px; }
+.office-field { display: block; margin: 12px 0; font-weight: 600; font-size: 14px; }
+.office-field input,.office-field textarea { font-weight: 400; }
+.office-layout .office-disclosure { border-top: 1px solid var(--line); margin: 10px 0; padding: 8px 0; }
+.office-disclosure > summary { cursor: pointer; padding: 6px 0; color: var(--accent); }
+.office-approval fieldset { border: 0; margin: 12px 0; padding: 0; }
+.office-approval legend { margin-bottom: 8px; font-weight: 600; } .office-approval .pick { margin: 6px 0; } .office-approval .pick small { display: block; }
+.office-revision { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 6px; }
+.list-row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; } .list-row strong { flex: 1; }
+.office-stages { display: flex; flex-wrap: wrap; gap: 6px; } .office-stages span { background: var(--tint); padding: 5px 8px; font-size: 13px; border-radius: 5px; }
+.office-layout .gov-report-paper { max-width: none; color: var(--ink); background: var(--card); }
+@media (prefers-color-scheme: dark) {
+  .sw-layout { --accent: #a9c9ff; --tint: #1d324b; --acc-ink: #13283f; }
+  .gov-office.office-layout { --accent: #87d7bf; --tint: #203b35; --acc-ink: #122b24; }
+  .office-layout .gov-report-paper { --ink: #e8edf1; --mute: #abb7c0; --line: #38434b; --card: #161d23; }
+}
+@media (max-width: 720px) {
+  .office-layout { padding: 10px 14px 36px; }
+  .office-home-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
+  .office-stack { gap: 12px; } .office-layout .division-nav { max-width: none; margin: 7px 0 12px; }
+  .office-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin-bottom: 14px; }
+  .office-tabs button { padding: 10px 1px; font-size: 14px; white-space: nowrap; }
+  .office-tools button,.office-tools summary,.office-layout button:not(.chip) { min-height: 44px; }
+  .office-layout .gov-grants { grid-template-columns: minmax(0,1fr); }
+  .office-panel, .decision-panel, .office-layout .card { padding: 16px; }
+  .office-layout .gov-report-paper { padding: 14px; } .office-reading { max-width: 100%; }
+}

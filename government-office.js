@@ -1,7 +1,8 @@
 /* 정부지원사업 본부: SW 운영 화면과 분리된 개인 지원사업 작업 공간 */
 window.createGovernmentOffice = function (React, jsx, api) {
   const h = jsx.jsx, j = jsx.jsxs;
-  const menus = [["overview", "한눈에 보기"], ["report", "하루 한 장 리포트"], ["discover", "지원사업 찾기"], ["recommend", "나에게 맞는 추천"], ["prepare", "신청 준비함"], ["track", "지원 현황"], ["profile", "내 지원 조건"]];
+  const { Header, Nav, Panel, Downloads, LinkButton } = api.layout;
+  const menus = [["overview","지원 홈"], ["recommend","공고 탐색"], ["prepare","신청 관리"], ["report","한 장 리포트"]];
   const statuses = ["검토 중", "준비 중", "신청 완료", "결과 대기", "선정", "미선정", "보류"];
   const blankProfile = { region: "", ageRange: "", employment: "", business: "", interests: "", notes: "" };
   const parse = (text, fallback) => { try { return JSON.parse(text); } catch { return fallback; } };
@@ -59,8 +60,9 @@ window.createGovernmentOffice = function (React, jsx, api) {
       try { const markdown = await api.km(token, path);if (!markdown) throw new Error("EMPTY_DOCUMENT");setDoc({ title: application.title, path, markdown });setTab("prepare"); }
       catch { setError("문서를 불러오지 못했습니다. 새로고침 후 다시 확인하세요."); }
     };
-    const exportDocument = (kind, document) => { try { const exporter=window.AIOfficeDocuments;if(!exporter)throw new Error("내려받기 기능을 불러오지 못했습니다. 앱을 다시 열어주세요.");exporter[kind](document.markdown,document.title+(document.date?"_"+document.date:"")); } catch(e){setError(e.message);} };
-    const exportButtons = document => j("div",{className:"gov-actions gov-export-actions",children:[h("button",{className:"primary",disabled:!document,onClick:async()=>{try{await api.downloadHwpx(token,document);}catch(e){setError(e.message);}},children:"한글(HWPX) 내려받기"}),h("button",{disabled:!document,onClick:()=>exportDocument("downloadDocx",document),children:"DOCX 내려받기"}),h("button",{disabled:!document,onClick:()=>exportDocument("print",document),children:"PDF 저장 / 인쇄"}),h("button",{disabled:!document,onClick:()=>exportDocument("downloadMarkdown",document),children:"원문(.md)"})]});
+    const exportButtons = (document, compact = false) => h(Downloads, {
+      doc: document, compact, onHwpx: item => api.downloadHwpx(token,item), onError: setError
+    });
     const loadReport = async path => { if(!/^outputs\/government\/\d{4}-\d{2}-\d{2}\/05-report\.md$/.test(path))return;try{const markdown=await api.km(token,path);if(!markdown)throw new Error("해당 날짜의 리포트가 아직 없습니다.");setReportDoc({title:"정부지원사업 한 장 리포트",date:path.split("/")[2],path,markdown});}catch(e){setError(e.message);} };
     const changeProfile = (key, value) => { dirtyProfile.current = true;setProfile(previous => { const next = { ...previous, [key]: value };try { localStorage.setItem("gov_profile_draft", JSON.stringify(next)); } catch {}return next; }); };
     const profileProvided = !!(profile.region || profile.employment || profile.business || profile.interests);
@@ -90,13 +92,38 @@ window.createGovernmentOffice = function (React, jsx, api) {
     };
     const controls = j("section", { className: "card gov-request", children: [h("h2", { children: "에이전트에게 요청" }),h("p", { className: "muted small", children: "공고 링크를 붙여 자격 확인을 맡기거나, 비교·서류 작성·수정을 요청하세요." }),h("textarea", { value: request, rows: 3, placeholder: "예: 이 공고를 개인 자격으로 신청할 수 있는지 확인해줘. https://…", onChange: event => setRequest(event.target.value) }),j("div", { className: "gov-actions", children: [h("button", { className: "primary", disabled: sending || request.trim().length < 3, onClick: () => command(request.trim().slice(0,40), request.trim(), () => setRequest("")), children: sending ? "요청 전송 중…" : "업무 요청하기" }), data.files.task && h("button", { onClick: () => { setDoc(data.files.task);setTab("prepare"); }, children: "최근 요청 결과 보기" })] })] });
     let content;
-    if (tab === "overview") content = j(jsx.Fragment, { children: [
-      j("section", { className: "gov-hero", children: [h("span", { className: "gov-eyebrow", children: "PERSONAL OPPORTUNITIES" }),h("h2", { children: "나에게 맞는 지원을 찾고, 신청까지 준비하세요." }),h("p", { children: "개인 신청 가능 여부부터 확인하고, 준비할 가치가 있는 사업을 추려드립니다." }),j("div", { className: "gov-actions", children: [h("button", { className: "primary", onClick: () => setTab("recommend"), children: "내 추천 보기" }),h("button", { onClick: () => setTab("profile"), children: profileProvided ? "지원 조건 확인" : "내 지원 조건 입력" })] })] }),
-      h("section", { className: "gov-stats", children: [["개인 신청 후보",activeRecords.length,"discover"],["우선 검토 추천",recommendations.length,"recommend"],["7일 이내 마감",imminent.length,"discover"],["신청 준비 중",pending.length,"prepare"]].map(([label,count,target]) => j("button", { className: "card gov-stat", onClick: () => setTab(target), children: [h("span", { children: label }),h("strong", { children: count + "건" })] },label)) }),
-      j("section", { className: "gov-section", children: [j("div", { className: "gov-section-heading", children: [h("h2", { children: "먼저 확인할 지원사업" }),h("button", { className: "ghost", onClick: () => setTab("discover"), children: "전체 보기" })] }),collection((imminent.length ? imminent : recommendations.length ? recommendations : activeRecords).slice(0,3), "아직 수집된 지원사업이 없어요", data.status?.gptReady ? "다음 자동 조사 결과가 나오면 공고와 추천이 여기에 표시됩니다." : "PC 에이전트를 연결하면 개인 신청 가능한 공고를 수집해 보여드립니다.")] }),
-      pending.length > 0 && j("section", { className: "gov-section", children: [h("h2", { children: "이어갈 신청 준비" }),h("div", { className: "gov-grants", children: pending.slice(0,2).map(applicationCard) })] }),
-      j("section", { className: "card", children: [h("h2", { children: "지원공고 한 장 리포트" }),h("p", { className: "muted small", children: "매일 18시 자동 작성 · 추천 공고 최대 3건과 마감·확인할 조건·공식 링크" }),data.files.report?h("div", { className: "gov-summary", children: h(api.Markdown, { text: data.files.report.markdown.slice(0,600) }) }):h("p",{className:"muted",children:"아직 작성된 리포트가 없습니다. PC 연결 후 매일 확인할 공고를 한 장으로 모아드립니다."}),exportButtons(data.files.report),!data.files.report&&h("p",{className:"muted small",children:"리포트가 작성되면 내려받을 수 있습니다. 한글 파일 생성에는 PC 연결이 필요합니다."}),h("button",{onClick:()=>setTab("report"),children:"한 장 리포트 보기"})] }),controls
-    ] });
+    const link = (label, onClick) => h(LinkButton, { onClick, children: label });
+    function showGrant(record) {
+      setQuery(record.title);
+      setFilter("all");
+      setTab("discover");
+    }
+    const priorities = [...new Map([...imminent, ...recommendations].map(record => [record.id, record])).values()].slice(0,3);
+    if (tab === "overview") content = j("div", { className:"office-home-grid", children:[
+      j("div", { className:"office-stack", children:[
+        j(Panel, { title:"먼저 검토할 공고", className:"grant-priority", aside:link("공고 탐색",()=>setTab("recommend")), children:[
+          h("p", {className:"muted small",children:"7일 이내 마감 공고와 개인 조건에 맞는 추천 공고"}),
+          priorities.length ? priorities.map(record => j("button", {className:"grant-row",onClick:()=>showGrant(record),children:[
+            h("strong",{children:record.title}),h("small",{children:record.agency}),h("span",{className:"deadline-tag",children:record.deadline ? record.deadline.slice(5).replace("-","/")+" 마감" : "마감일 확인"})
+          ]},record.id)) : h("p",{className:"office-empty",children:data.status ? "아직 검토할 공고가 없습니다." : "공고 확인 중…"}),
+          !profileProvided && link("내 지원 조건 입력",()=>setTab("profile"))
+        ]}),
+        j(Panel, {title:"지원공고 한 장 리포트",aside:link("전체 보기",()=>setTab("report")),children:[
+          h("p",{className:"muted",children:data.files.report ? "최근 작성일 "+data.files.report.date : "개인 신청 후보를 매일 18시에 정리합니다."}),
+          exportButtons(data.files.report,true)
+        ]})
+      ]}),
+      j("div", { className:"office-stack", children:[
+        j(Panel, {title:"진행 중인 신청",aside:link("지원 현황",()=>setTab("track")),children:[
+          h("div",{className:"application-counts",children:[["신청 준비",pending.length,"prepare"],["결과 대기",data.applications.filter(item=>item.status==="결과 대기").length,"track"]].map(([label,n,target])=>j("button",{onClick:()=>setTab(target),children:[h("strong",{children:data.status?n:"–"}),h("span",{children:label})]},label))}),
+          ...pending.slice(0,2).map(item=>j("div",{className:"report-line",children:[h("strong",{children:item.title}),item.documentPath ? link("서류 열기",()=>openDocument(item)) : link("준비함",()=>setTab("prepare"))]},item.id))
+        ]}),
+        j(Panel,{title:"수시 업무",aside:link("업무 지시",()=>setTab("request")),children:[
+          h("p",{className:"muted",children:"공고 자격 확인, 조건 비교, 신청서 수정을 요청하세요."}),
+          data.files.task && link("최근 결과 열기",()=>{setDoc(data.files.task);setTab("prepare");})
+        ]})
+      ]})
+    ]});
     if (tab === "report") {
       const current=reportDoc||data.files.report;
       const history=Array.isArray(data.reports)?data.reports:[];
@@ -104,19 +131,26 @@ window.createGovernmentOffice = function (React, jsx, api) {
     }
     if (tab === "discover") {
       const records = data.records.filter(record => (record.title + " " + record.agency + " " + record.benefit).toLowerCase().includes(query.toLowerCase())).filter(record => filter === "all" || (filter === "open" ? !isClosed(record) : filter === "closed" ? isClosed(record) : !record.deadline));
-      content = j(jsx.Fragment, { children: [j("section", { className: "card", children: [h("h2", { children: "개인 신청 가능한 공고부터 찾습니다" }),h("p", { className: "muted", children: "기업·기관 전용 사업을 제외한 조사 후보입니다. 내 자격과 실제 접수 여부는 공식 공고에서 최종 확인합니다." }),j("div", { className: "gov-search", children: [h("input", { type: "search", value: query, placeholder: "사업명·기관·지원 내용 검색", "aria-label": "지원사업 검색", onChange: event => setQuery(event.target.value) }),h("select", { value: filter, "aria-label": "접수 상태", onChange: event => setFilter(event.target.value), children: [["all","전체"],["open","마감 전·기한 미확인"],["unknown","기한 확인 필요"],["closed","마감"]].map(([value,label]) => h("option", { value, children: label },value)) })] })] }),collection(records, "조건에 맞는 수집 공고가 없어요", "자동 조사 결과가 쌓이면 이곳에서 검색할 수 있습니다. 알고 있는 공고는 아래 요청창에 링크를 붙여 검토를 맡기세요."),controls] });
+      content = j(jsx.Fragment, { children: [j("section", { className: "card", children: [h("h2", { children: "개인 신청 가능한 공고부터 찾습니다" }),h("p", { className: "muted", children: "기업·기관 전용 사업을 제외한 조사 후보입니다. 내 자격과 실제 접수 여부는 공식 공고에서 최종 확인합니다." }),j("div", { className: "gov-search", children: [h("input", { type: "search", value: query, placeholder: "사업명·기관·지원 내용 검색", "aria-label": "지원사업 검색", onChange: event => setQuery(event.target.value) }),h("select", { value: filter, "aria-label": "접수 상태", onChange: event => setFilter(event.target.value), children: [["all","전체"],["open","마감 전·기한 미확인"],["unknown","기한 확인 필요"],["closed","마감"]].map(([value,label]) => h("option", { value, children: label },value)) })] })] }),collection(records, "조건에 맞는 수집 공고가 없어요", "자동 조사 결과가 쌓이면 이곳에서 검색할 수 있습니다. 알고 있는 공고는 업무 지시에서 링크로 검토를 요청하세요.")] });
     }
     if (tab === "recommend") content = j(jsx.Fragment, { children: [j("section", { className: "card", children: [h("h2", { children: "나에게 맞는 추천" }),h("p", { children: "추천 이유, 미확인 자격, 접수마감과 준비 부담을 함께 살펴보세요. 추천은 선정이나 신청 자격 충족을 보장하지 않습니다." }),!profileProvided && h("button", { onClick: () => setTab("profile"), children: "먼저 내 지원 조건 입력하기" })] }),collection(recommendations, "아직 확정된 추천이 없어요", "개인 지원 조건과 공고를 대조한 뒤 우선 검토할 후보를 표시합니다. 일반 수집 공고는 ‘지원사업 찾기’에서 볼 수 있습니다.")] });
-    if (tab === "prepare") content = j(jsx.Fragment, { children: [j("section", { className: "card", children: [h("h2", { children: "신청 준비함" }),h("p", { className: "muted", children: "선택한 사업의 확인할 조건·필요서류·신청서 초안을 모아 봅니다. ‘신청 준비’는 실제 제출과 구분됩니다." })] }),data.applications.length ? h("div", { className: "gov-grants", children: data.applications.map(applicationCard) }) : empty("아직 준비 중인 신청이 없어요", "공고의 ‘신청 준비하기’를 누르면 에이전트가 체크리스트와 작성 가능한 초안을 준비합니다.",h("button", { onClick: () => setTab("discover"), children: "지원사업 찾기" })),doc && j("section", { className: "card gov-document", children: [h("h2", { children: doc.title }),h("div", { className: "doc", children: h(api.Markdown, { text: doc.markdown }) }),exportButtons(doc),h("button", { onClick: () => setRequest("아래 준비서류를 수정해줘.\n\n참고: " + doc.path + "\n수정할 내용: "), children: "이 문서 수정 요청" })] }),controls] });
+    if (tab === "prepare") content = j(jsx.Fragment, { children: [j("section", { className: "card", children: [h("h2", { children: "신청 준비함" }),h("p", { className: "muted", children: "선택한 사업의 확인할 조건·필요서류·신청서 초안을 모아 봅니다. ‘신청 준비’는 실제 제출과 구분됩니다." })] }),data.applications.length ? h("div", { className: "gov-grants", children: data.applications.map(applicationCard) }) : empty("아직 준비 중인 신청이 없어요", "공고의 ‘신청 준비하기’를 누르면 에이전트가 체크리스트와 작성 가능한 초안을 준비합니다.",h("button", { onClick: () => setTab("discover"), children: "지원사업 찾기" })),doc && j("section", { className: "card gov-document", children: [h("h2", { children: doc.title }),h("div", { className: "doc", children: h(api.Markdown, { text: doc.markdown }) }),exportButtons(doc),h("button", { onClick: () => {setRequest("아래 준비서류를 수정해줘.\n\n참고: " + doc.path + "\n수정할 내용: ");setTab("request");}, children: "이 문서 수정 요청" })] })] });
     if (tab === "track") content = j(jsx.Fragment, { children: [j("section", { className: "card", children: [h("h2", { children: "지원 현황" }),h("p", { className: "muted", children: "준비 중부터 결과 확인까지 관리합니다. ‘신청 완료’는 실제 제출 후 직접 변경하세요. 에이전트가 자동 제출하지 않습니다." })] }),data.applications.length ? h("div", { className: "gov-grants", children: data.applications.map(applicationCard) }) : empty("아직 등록된 지원 현황이 없어요", "신청 준비를 시작한 사업이 이곳에 나타납니다.")] });
     if (tab === "profile") {
       const field = (key,label,placeholder,options) => j("label", { className: "field", children: [label,options ? h("select", { value: profile[key] || "", onChange: event => changeProfile(key,event.target.value), children: [h("option", { value:"",children:"선택하지 않음" }),...options.map(value=>h("option",{value,children:value},value))] }) : h(key === "notes" ? "textarea" : "input", { value: profile[key] || "", placeholder, rows: key === "notes" ? 3 : undefined, onChange: event => changeProfile(key,event.target.value) })] },key);
       content = j("form", { className: "card gov-profile", onSubmit: event => { event.preventDefault();operation("profile_save","개인 지원 조건 저장",profile); }, children: [h("h2", { children: "내 지원 조건" }),h("p", { className: "muted", children: "입력한 조건만 추천에 사용합니다. 모르는 항목은 비워 두면 확인 필요로 남깁니다. 입력 중인 내용은 이 브라우저에 임시 보관됩니다." }),h("div", { className: "gov-profile-grid", children: [field("region","거주지역","예: 인천광역시"),field("ageRange","연령 조건","예: 만 30대 / 직접 입력"),field("employment","현재 활동 상태","",["재직 중","구직 중","프리랜서","학생","기타"]),field("business","사업자등록 여부","",["없음","개인사업자 있음","법인사업자 있음","확인 필요"]),field("interests","관심 분야","예: 창업, 직무교육, 창작, 생활지원"),field("notes","추가 조건·제외할 사업","확인된 조건과 원하지 않는 지원 유형을 적어주세요.")] }),h("button", { type:"submit",className:"primary",disabled:sending,children:"조건 저장 요청" }),h("p", { className: "muted small", children: "PC 에이전트가 처리하면 개인 조건이 저장되어 이후 조사에 반영됩니다. 저장소의 개인 조건은 정부지원사업 본부에서만 사용합니다." })] });
     }
-    return j("main", { className: "shell gov-office", children: [divisionNav,j("header", { className:"top gov-header",children:[j("div",{children:[h("p",{className:"gov-eyebrow",children:"AI 사무실 / 개인 지원사업"}),h("h1",{children:"정부지원사업 본부"})]}),j("div",{className:"row",children:[h("button",{onClick:load,disabled:busy,children:busy?"갱신 중…":"새로고침"}),h("button",{className:"ghost",onClick:onDisconnect,children:"연결 해제"})]})]}),
-      j("div", { className:"gov-connection",children:[h("span",{className:"gov-dot"+(data.status?.gptReady?" ready":"" )}),h("span",{children:data.status?.gptReady?"PC 로그인 설정 확인됨 · 실행기가 켜져 있어야 업무를 처리합니다.":"PC 에이전트 연결 전 · 아직 자동 조사를 시작하지 않았습니다."}),h("a",{href:"https://github.com/kangsj2667-coder/ksj95/blob/main/docs/windows-gpt.md",target:"_blank",rel:"noreferrer",children:"연결 안내"})]}),
-      h("nav", { className:"gov-menu","aria-label":"정부지원사업 메뉴",children:menus.map(([value,label])=>h("button",{className:tab===value?"on":"","aria-pressed":tab===value,onClick:()=>{setTab(value);setError("");},children:label},value))}),
-      error && h("div",{className:"alert-box",role:"alert",children:error}),notice && h("div",{className:"gov-notice",role:"status",children:notice}),content,
-      h("footer",{className:"foot",children:"공식 공고 확인 → 개인 조건 대조 → 신청 준비 → 직접 제출 → 결과 관리"})] });
+    if (tab === "request") content = controls;
+    const explore = ["recommend","discover","profile"].includes(tab);
+    const application = ["prepare","track"].includes(tab);
+    return j("main", { className:"shell office-layout gov-office", children:[
+      h(Header, {name:"정부지원사업 본부",divisionNav,status:data.status,busy,reload:load,disconnect:onDisconnect,
+        utilities:[["내 지원 조건",()=>setTab("profile")],["업무 지시",()=>setTab("request")]]}),
+      h(Nav, {items:menus,active:explore?"recommend":application?"prepare":tab,choose:setTab,label:"정부지원사업 업무 메뉴"}),
+      explore && h(Nav,{secondary:true,label:"공고 탐색 메뉴",items:[["recommend","맞춤 추천"],["discover","전체 공고"],["profile","내 지원 조건"]],active:tab,choose:setTab}),
+      application && h(Nav,{secondary:true,label:"신청 관리 메뉴",items:[["prepare","신청 준비함"],["track","지원 현황"]],active:tab,choose:setTab}),
+      error && h("div",{className:"alert-box",role:"alert",children:error}),
+      notice && h("div",{className:"gov-notice",role:"status",children:notice}),content
+    ]});
   };
 };
