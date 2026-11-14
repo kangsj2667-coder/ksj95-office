@@ -1,7 +1,7 @@
 name: Weekly report HWP checks
 on:
   push:
-    paths: ['weekly-hwp.js', 'weekly-report.js', 'weekly-report.html', 'test/weekly-*', 'test/validate-weekly-hwp.py', '.github/workflows/weekly-report-checks.yml']
+    paths: ['weekly-hwp.js', 'weekly-report.js', 'weekly-report.html', 'test/weekly-*', 'test/*weekly-hwp.py', '.github/workflows/weekly-report-checks.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,10 +20,8 @@ jobs:
       - run: python -m pip install olefile==0.47 six==1.17.0 git+https://github.com/mete0r/pyhwp.git@83239f0d3bdf438b2c9f7dcff455a6e841154a39
       - run: sudo apt-get update -qq && sudo apt-get install -y libxml2-utils
       - run: python test/validate-weekly-hwp.py
-      - name: Inspect HWP metadata with independent parser
-        run: python -c "from hwp5.filestructure import Hwp5File; f=Hwp5File('test-output/weekly.hwp'); print(f.summaryinfo.getPropertySetStream())"
-      - name: Parse with independent HWP parser
-        run: hwp5proc xml test-output/weekly.hwp > test-output/weekly.xml
+      - name: Parse full document with independent HWP parser
+        run: python test/parse-weekly-hwp.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
