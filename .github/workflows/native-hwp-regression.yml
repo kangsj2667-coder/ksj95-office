@@ -1,0 +1,60 @@
+name: Native HWP and weekly isolation regression
+on:
+  push:
+    paths:
+      - 'weekly-hwp*.js'
+      - 'weekly-report.*'
+      - 'sw-office.js'
+      - 'test/native-hwp-regression.cjs'
+      - '.github/workflows/native-hwp-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and rendering regression
+        run: |
+          node --check sw-office.js
+          node --check weekly-hwp-compat.js
+          node --check weekly-report.js
+          node test/native-hwp-regression.cjs
+      - name: Install independent reader
+        run: |
+          python -m pip install olefile==0.47 six==1.17.0 git+https://github.com/mete0r/pyhwp.git@83239f0d3bdf438b2c9f7dcff455a6e841154a39
+          sudo apt-get update -qq && sudo apt-get install -y libxml2-utils
+      - name: Independent HWP parsing
+        run: python test/parse-weekly-hwp.py
+      - name: Native compression integrity
+        run: |
+          python - <<'PY'
+          import olefile, zlib, struct
+          with olefile.OleFileIO('test-output/weekly.hwp',raise_defects=olefile.DEFECT_INCORRECT) as f:
+              assert struct.unpack_from('<I',f.openstream('FileHeader').read(),36)[0] == 1
+              for name in ['DocInfo','BodyText/Section0','Scripts/DefaultJScript','Scripts/JScriptVersion']:
+                  raw=f.openstream(name).read(); decoder=zlib.decompressobj(-15); body=decoder.decompress(raw)
+                  assert struct.unpack('<II',decoder.unused_data)==(zlib.crc32(body),len(body)),name
+              assert f.openstream('PrvText').size == 2046
+              assert set(f.openstream('DocOptions/_LinkDoc').read()) == {0}
+          print('Native compression, CRC, preview and sanitized link checks passed.')
+          PY
+      - name: Package only synthetic output and public UI source for verification
+        if: always()
+        run: |
+          mkdir -p verification/public-ui
+          cp *.html *.js *.css verification/public-ui/
+          cp -r test-output verification/ || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-hwp-and-public-ui-verification
+          path: verification/
+          retention-days: 3
