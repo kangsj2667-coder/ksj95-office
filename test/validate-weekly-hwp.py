@@ -4,6 +4,7 @@ p=Path('test-output/weekly.hwp')
 assert olefile.isOleFile(str(p))
 with olefile.OleFileIO(str(p),raise_defects=olefile.DEFECT_INCORRECT) as ole:
     assert ole.openstream('FileHeader').read().startswith(b'HWP Document File')
+    assert ole.exists('\x05HwpSummaryInformation')
     data=ole.openstream('BodyText/Section0').read()
     pos=0;text=[];tables=[]
     while pos<len(data):

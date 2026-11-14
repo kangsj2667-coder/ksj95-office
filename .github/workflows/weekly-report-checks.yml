@@ -18,6 +18,7 @@ jobs:
           python-version: '3.11'
       - run: node --check weekly-report.js && node --check office-layout.js && node test/weekly-hwp.cjs
       - run: python -m pip install olefile==0.47 pyhwp==0.1b15 six==1.17.0
+      - run: sudo apt-get update -qq && sudo apt-get install -y libxml2-utils
       - run: python test/validate-weekly-hwp.py
       - name: Parse with independent HWP parser
         run: hwp5proc xml test-output/weekly.hwp > test-output/weekly.xml
