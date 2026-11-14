@@ -1,4 +1,10 @@
-/* 두 본부가 공유하는 메뉴와 문서 도구. 업무 데이터와 명령은 각 본부에서 관리한다. */
+/* All three divisions use one typography/nav stylesheet. Preserve existing business functions. */
+(function(){
+  const style=document.createElement('link');style.rel='stylesheet';style.href='office-unified.css?v=20261114-2';document.head.append(style);
+  const division=new URLSearchParams(location.search).get('division');
+  if(division==='sw'||division==='government'){try{localStorage.setItem('swmc_division',division)}catch{}}
+})();
+/* 공통 메뉴와 문서 도구. 업무 데이터와 명령은 각 본부에서 관리한다. */
 window.createOfficeLayout = function (React) {
   const el = React.createElement;
   const guide = "https://github.com/kangsj2667-coder/ksj95/blob/main/docs/windows-gpt.md";
