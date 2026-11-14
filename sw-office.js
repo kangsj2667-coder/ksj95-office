@@ -2,18 +2,25 @@ window.createSwOffice = function (React, layout, api) {
   const el = React.createElement;
   const { Header, Nav, Panel, Downloads, LinkButton } = layout;
   const tabs = [["home","업무 홈"], ["approval","검토·승인"], ["documents","보고·문서"], ["request","업무 지시"]];
-  const reports = [["report","일일 리포트","매일 18시"], ["weeklyDraft","주간업무보고","월요일 09시"]];
+  // Weekly reporting belongs only to its dedicated division. Keep stored records intact.
+  const weeklyKeys = new Set(["weeklyDraft", "weekly"]);
+  const documentTabs = api.docTabs.filter(([key]) => !weeklyKeys.has(key));
+  const reports = [["report","일일 리포트","매일 18시"]];
 
   return function SwOffice(props) {
     const { status, files, documentKey, chooseDocument, selectedPlan, choosePlan, docType, changeType, submitted,
       approve, request, changeRequest, reference, changeReference, sendRequest, revision, changeRevision, sendRevision } = props;
     const [tab, setTab] = React.useState("home");
-    const doc = files[documentKey];
+    const visibleDocumentKey = weeklyKeys.has(documentKey) ? "report" : documentKey;
+    React.useEffect(() => {
+      if (weeklyKeys.has(documentKey)) chooseDocument("report");
+    }, [documentKey, chooseDocument]);
+    const doc = files[visibleDocumentKey];
     const needsReview = status?.approval && !submitted;
     const plans = status?.top || [];
     const planOptions = plans.filter(plan => [1, 2].includes(plan.n));
     const reviewOpen = () => setTab("approval");
-    function openDoc(key) { chooseDocument(key); setTab("documents"); }
+    function openDoc(key) { if (weeklyKeys.has(key)) return; chooseDocument(key); setTab("documents"); }
     function downloads(document, compact = false) {
       return el(Downloads, { doc: document, compact, onHwpx: props.downloadHwpx, onError: props.onError });
     }
@@ -52,7 +59,7 @@ window.createSwOffice = function (React, layout, api) {
     }
     function documents() {
       return el(Panel, { title: "보고·문서" },
-        el(Nav, { secondary:true, label:"문서 종류", items:api.docTabs.filter(([key]) => files[key] || key === documentKey), active:documentKey, choose:chooseDocument }),
+        el(Nav, { secondary:true, label:"문서 종류", items:documentTabs.filter(([key]) => files[key] || key === visibleDocumentKey), active:visibleDocumentKey, choose:chooseDocument }),
         doc && el("h3", { className: "doc-title" }, [doc.title,doc.date].filter(Boolean).join(" · ")),
         downloads(doc), doc ? read(doc) : el("p", {className:"office-empty"}, "작성된 문서가 여기에 표시됩니다."),
         doc && el("div", { className:"office-revision" }, el("label", { className:"office-field" }, "수정할 내용", el("input", { value:revision,onChange:e=>changeRevision(e.target.value) })), el("button", { disabled:!revision.trim(), onClick:sendRevision }, "수정 요청")));
@@ -60,8 +67,8 @@ window.createSwOffice = function (React, layout, api) {
     function operations() {
       return el("div", {className:"office-stack"},
         el(Panel, { title:"업무 진행", aside:link("아침 작업 실행",props.runMorning) }, el("p",null,status?.headline || "상태 확인 중"), el("div", {className:"office-stages"}, ...(status?.stages || []).map(step=>el("span",{key:step.id}, step.label + " · " + step.status)))),
-        el(Panel, { title:"에이전트 운영" }, el("p",null,"GPT는 조사·기획·작성을, Claude는 품질검수를 담당합니다."), el("p",{className:"muted"},status?.agents?.claude ? [status.agents.claude.status,status.agents.claude.reason].filter(Boolean).join(" · ") : "Claude 검수 연결 확인 전"),
-          ...api.teams.map(team=>el("div",{className:"list-row",key:team.key},el("strong",null,team.name),el("span",null,status?.depts?.[team.key]?.label || team.role),el("small",null,status?.depts?.[team.key]?.status || "대기")))),
+        el(Panel, { title:"에이전트 운영" }, el("p",null,"GPT는 조사·기획·작성을, Claude는 품질검수를 담당합니다."), el("p",{className:"muted"},status?.agents?.claude ? [status.agents.claude.status,status.agents.claude.reason].filter(Boolean).join(" · ") : "Claude 검수 연결 확인 전",
+          ), ...api.teams.map(team=>el("div",{className:"list-row",key:team.key},el("strong",null,team.name),el("span",null,status?.depts?.[team.key]?.label || team.role),el("small",null,status?.depts?.[team.key]?.status || "대기")))),
         el(Panel,{title:"실행 기록 · PC 공통"},...(status?.runs || []).map((run,index)=>el("div",{className:"list-row",key:index},el("strong",null,run.name),el("small",null,run.when),el("span",null,run.result))),!status?.runs?.length && el("p",{className:"muted"}, "아직 실행 기록이 없습니다.")),
         el(Panel,{title:"자동 실행 일정"},...(status?.schedule || []).map(item=>el("div",{className:"list-row",key:item.what},el("strong",null,item.what),el("small",null,item.when)))));
     }
