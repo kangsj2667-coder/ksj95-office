@@ -1,16 +1,7 @@
-"""Parse generated HWP with pyhwp, including standard OLE application metadata.
-pyhwp's HWP property label list omits PIDSI_APPNAME and otherwise tries to read
-an absent optional dictionary. Register the standard property label; do not skip
-metadata, record parsing, document sections, tables or text validation.
-"""
-from pathlib import Path
-from hwp5 import summaryinfo
-from hwp5.msoleprops import PIDSI_APPNAME
+"""Validate the entire generated file with an independent, unmodified HWP reader."""
 from hwp5.xmlmodel import Hwp5File
 from lxml import etree
 
-if PIDSI_APPNAME not in summaryinfo.HWP_PROPERTIES:
-    summaryinfo.HWP_PROPERTIES = tuple(summaryinfo.HWP_PROPERTIES) + (PIDSI_APPNAME,)
 file = Hwp5File('test-output/weekly.hwp')
 assert file.summaryinfo.getPropertySetStream().propertysets
 with open('test-output/weekly.xml', 'wb') as output:

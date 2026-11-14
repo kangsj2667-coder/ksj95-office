@@ -78,7 +78,7 @@ async function build(input){
  const mainCtrl=rs[24];u32(mainCtrl.data,20,height+1900);u32(rs[23].data,8,height+1900);u32(rs[23].data,12,height+1900);u32(rs[23].data,16,Math.floor((height+1900)*.85));
  const header=bytes(TEMPLATE.fileHeader),info=await inflate(bytes(TEMPLATE.docInfoDeflate));
  const text=`혁신기술교육센터 주간업무보고\r\n소프트웨어(SW) 미래채움사업\r\n${labels[1]}\r\n${actual}\r\n${labels[2]}\r\n${plan}`;
- return compound({'\u0005HwpSummaryInformation':bytes('/v8AAAYCAgBgtqKfYRDUEbTGAGCXwJ2MAQAAAGC2op9hENQRtMYAYJfAnYwwAAAAdAAAAAQAAAACAAAAKAAAAAQAAABIAAAADgAAAFQAAAASAAAAXAAAAB8AAAAMAAAA+LuYt0TMwMYgAPzIBKzFxTS79LzgrAAAHwAAAAEAAAAAAAAAAwAAAAEAAAAfAAAABwAAAEEASQAgAKzANLvkwgAAAAA='),'FileHeader':header,'DocInfo':info,'BodyText/Section0':cat(rs.map(pack)),'PrvText':utf16(text.slice(0,1800))});
+ return compound({'\u0005HwpSummaryInformation':bytes('/v8AAAYCAgBgtqKfYRDUEbTGAGCXwJ2MAQAAAGC2op9hENQRtMYAYJfAnYwwAAAAgAAAAAUAAAAAAAAAMAAAAAIAAAA0AAAABAAAAFQAAAAOAAAAYAAAABIAAABoAAAAAAAAAB8AAAAMAAAA+LuYt0TMwMYgAPzIBKzFxTS79LzgrAAAHwAAAAEAAAAAAAAAAwAAAAEAAAAfAAAABwAAAEEASQAgAKzANLvkwgAAAAA='),'FileHeader':header,'DocInfo':info,'BodyText/Section0':cat(rs.map(pack)),'PrvText':utf16(text.slice(0,1800))});
 }
 async function download(input){const b=await build(input);const blob=new Blob([b],{type:'application/x-hwp'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`미래채움_주간업무보고_${input.start}.hwp`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);return b}
 const api={build,download,template:'1111-혁신기술교육센터 주간업무보고.hwp / 소프트웨어(SW) 미래채움사업'};if(typeof module==='object'&&module.exports)module.exports=api;else root.WeeklyHwp=api;
