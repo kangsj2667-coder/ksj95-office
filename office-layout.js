@@ -26,7 +26,7 @@ window.createOfficeLayout = function (React) {
         el("h1", null, name),
         el("a", { className: "office-pc", href: guide, target: "_blank", rel: "noreferrer", title: "PC 연결 안내" },
           el("i", { className: status?.gptReady ? "ready" : "", "aria-hidden": true }),
-          !status ? "연결 확인 중" : status.gptReady ? "PC 설정 확인됨" : "PC 연결 필요")));
+          !status ? "GPT 작업 PC 확인 중" : status.gptReady ? "GPT 작업 PC 설정 확인됨" : "GPT 작업 PC 미설정 · 한글 PC 별도 연결")));
   }
 
   function Nav({ items, active, choose, label, secondary = false }) {
