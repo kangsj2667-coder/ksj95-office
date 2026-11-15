@@ -24,9 +24,11 @@ window.createOfficeLayout = function (React) {
       divisionNav,
       el("div", { className: "office-heading-row" },
         el("h1", null, name),
-        el("a", { className: "office-pc", href: guide, target: "_blank", rel: "noreferrer", title: "PC 연결 안내" },
-          el("i", { className: status?.gptReady ? "ready" : "", "aria-hidden": true }),
-          !status ? "GPT 작업 PC 확인 중" : status.gptReady ? "GPT 작업 PC 설정 확인됨" : "GPT 작업 PC 미설정 · 한글 PC 별도 연결")));
+        el("div", { className: "office-pc", role: "status", title: "한글 PC 연결 검증과 GPT(Codex) 업무 실행기 설정은 서로 다릅니다." },
+          el("i", { className: status?.hwpReady || status?.gptReady ? "ready" : "", "aria-hidden": true }),
+          !status ? "PC 연결 상태 확인 중" :
+          (status.hwpReady ? "한글 PC 연결 완료" : "한글 PC 미확인") +
+          " · " + (status.gptReady ? "GPT 업무 실행 준비" : "GPT 업무 실행 미설정"))));
   }
 
   function Nav({ items, active, choose, label, secondary = false }) {
