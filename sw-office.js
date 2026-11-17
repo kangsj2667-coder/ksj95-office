@@ -1,87 +1,126 @@
+/* SW 미래체험 본부: 대표는 결과만 본다. 기획안 TOP 2, 정기 보고서(한글) 다운로드, 업무 지시만 노출한다. */
 window.createSwOffice = function (React, layout, api) {
   const el = React.createElement;
   const { Header, Nav, Panel, Downloads, LinkButton } = layout;
-  const tabs = [["home","업무 홈"], ["approval","검토·승인"], ["documents","보고·문서"], ["request","업무 지시"]];
-  // Weekly reporting belongs only to its dedicated division. Keep stored records intact.
+  const tabs = [["home", "업무 홈"], ["approval", "기획안 검토"], ["request", "업무 지시"]];
   const weeklyKeys = new Set(["weeklyDraft", "weekly"]);
-  const documentTabs = api.docTabs.filter(([key]) => !weeklyKeys.has(key));
-  const reports = [["report","일일 리포트","매일 18시"]];
+  const API = "https://api.github.com/repos/kangsj2667-coder/ksj95/contents/";
+  const token = () => { try { return localStorage.getItem("swmc_token") || ""; } catch { return ""; } };
+  async function raw(path) {
+    const res = await fetch(API + path.split("/").map(encodeURIComponent).join("/"), {
+      cache: "no-store",
+      headers: { Authorization: "Bearer " + token(), Accept: "application/vnd.github.raw+json", "X-GitHub-Api-Version": "2022-11-28" },
+    });
+    if (!res.ok) throw new Error("GitHub " + res.status);
+    return res.text();
+  }
+  // 승인 후 작성된 문서는 날짜 폴더가 바뀌어도 최근 3건까지 보여준다.
+  function useApprovedDocs(reloadKey) {
+    const [docs, setDocs] = React.useState([]);
+    React.useEffect(() => {
+      let alive = true;
+      if (!token()) return undefined;
+      (async () => {
+        const manifest = JSON.parse(await raw("outputs/documents.json"));
+        const records = (manifest.records || [])
+          .filter(r => r.status === "ready" && /^outputs\/\d{4}-\d{2}-\d{2}\/04-doc[^/]*\.md$/.test(r.sourcePath))
+          .sort((a, b) => b.sourcePath.localeCompare(a.sourcePath, "en", { numeric: true }))
+          .slice(0, 3);
+        const list = await Promise.all(records.map(async r => {
+          const date = r.sourcePath.split("/")[1];
+          const title = String(r.title || "승인 문서").replace(/^문서작성팀\s*·\s*/, "").replace(/\s*·\s*\d{4}-\d{2}-\d{2}$/, "");
+          return { title, date, path: r.sourcePath, markdown: await raw(r.sourcePath) };
+        }));
+        if (alive) setDocs(list);
+      })().catch(() => {});
+      return () => { alive = false; };
+    }, [reloadKey]);
+    return docs;
+  }
+  // 기획안 원문에서 TOP 1·2 본문만 잘라낸다. 점수·후보 목록·검수 내역은 보여주지 않는다.
+  function topSections(markdown) {
+    const out = {};
+    if (!markdown) return out;
+    for (const part of markdown.split(/^(?=##\s*TOP\s*\d)/m)) {
+      const m = part.match(/^##\s*TOP\s*(\d)\s*[·:.\-]?\s*(.*)$/m);
+      if (!m || out[m[1]]) continue;
+      const body = part.replace(/^##.*$/m, "").replace(/^##\s+(?!TOP)[\s\S]*$/m, "").trim();
+      out[m[1]] = { title: m[2].trim(), body };
+    }
+    return out;
+  }
 
   return function SwOffice(props) {
-    const { status, files, documentKey, chooseDocument, selectedPlan, choosePlan, docType, changeType, submitted,
-      approve, request, changeRequest, reference, changeReference, sendRequest, revision, changeRevision, sendRevision } = props;
+    const { status, files, chooseDocument, documentKey, selectedPlan, choosePlan, docType, changeType, submitted,
+      approve, request, changeRequest, reference, changeReference, sendRequest } = props;
     const [tab, setTab] = React.useState("home");
-    const visibleDocumentKey = weeklyKeys.has(documentKey) ? "report" : documentKey;
-    React.useEffect(() => {
-      if (weeklyKeys.has(documentKey)) chooseDocument("report");
-    }, [documentKey, chooseDocument]);
-    const doc = files[visibleDocumentKey];
+    React.useEffect(() => { if (weeklyKeys.has(documentKey)) chooseDocument("report"); }, [documentKey, chooseDocument]);
+    const approvedDocs = useApprovedDocs([files.plan?.date, files.doc?.path, files.report?.date, submitted].join("|"));
     const needsReview = status?.approval && !submitted;
-    const plans = status?.top || [];
-    const planOptions = plans.filter(plan => [1, 2].includes(plan.n));
-    const reviewOpen = () => setTab("approval");
-    function openDoc(key) { if (weeklyKeys.has(key)) return; chooseDocument(key); setTab("documents"); }
-    function downloads(document, compact = false) {
-      return el(Downloads, { doc: document, compact, onHwpx: props.downloadHwpx, onError: props.onError });
-    }
-    const read = document => document && el("div", { className: "office-reading" }, el(api.Markdown, { text: document.markdown }));
-    const link = (text, action) => el(LinkButton, { onClick: action }, text);
+    const plans = (status?.top || []).filter(plan => [1, 2].includes(plan.n));
+    const sections = topSections(files.plan?.markdown);
+    const download = document => el(Downloads, { doc: document, compact: true, onHwpx: props.downloadHwpx, onError: props.onError });
     const reviewTitle = !status ? "안건 확인 중" : submitted ? "문서 작성 요청을 보냈어요" : needsReview ? "검토할 기획안 " + plans.length + "건" : "승인 대기 안건이 없습니다";
+
     const reviewSummary = el("section", { className: "decision-panel" },
-      el("div", { className: "decision-label" }, "기획안 검토", status?.date && el("span", null, status.date)),
+      el("div", { className: "decision-label" }, "기획안 검토 · 월·수 오전 9시", status?.date && el("span", null, status.date)),
       el("h2", null, reviewTitle),
       needsReview && el("ul", { className: "short-list" }, ...plans.map(item => el("li", { key: item.n }, item.title))),
-      (needsReview || files.plan) && el("button", { className: "decision-action", onClick: reviewOpen }, needsReview ? "기획안 검토하기" : "최근 기획안 보기"));
+      needsReview && el("button", { className: "decision-action", onClick: () => setTab("approval") }, "기획안 검토하기"));
+
+    const docs = Array.isArray(approvedDocs) && approvedDocs.length ? approvedDocs : (files.doc ? [files.doc] : []);
+    const shelfRow = (key, label, sub, document) => el("div", { className: "report-line", key },
+      el("div", null, el("h3", null, label), el("small", null, sub)),
+      document ? download(document) : el("span", { className: "neutral-tag" }, status ? "작성 전" : "확인 중"));
     const reportShelf = el(Panel, { title: "정기 보고서" },
-      ...reports.map(([key,label,time]) => el("div", { className: "report-line", key },
-        el("div", null, el("h3", null, label), el("small", null, files[key]?.date || time + " 자동 작성")),
-        files[key] ? link("열기", () => openDoc(key)) : el("span", { className: "neutral-tag" }, status ? "작성 전" : "확인 중"))),
-      el("div", { className: "report-download" }, el("small", null, "일일 리포트"), downloads(files.report, true)));
+      shelfRow("report", "일일 리포트", files.report?.date || "매일 18시 자동 작성", files.report),
+      ...(docs.length ? docs.map((d, i) => shelfRow("doc" + i, "승인 문서 · " + d.title, d.date, d))
+        : [shelfRow("doc", "승인 문서", "기획안을 승인하면 자동 작성", null)]),
+      files.task && shelfRow("task", "수시 업무 결과", files.task.date, files.task));
+
     const requestPanel = el(Panel, { title: "새 업무 지시" },
       el("label", { className: "office-field" }, "업무 내용", el("textarea", { rows: 4, value: request, placeholder: "예: 다음 주 교육 운영 체크리스트를 작성해줘", onChange: e => changeRequest(e.target.value) })),
-      el("div", { className: "chips" }, ...["이번 주 일정 점검","조합 강사 모집 안내문 초안","페스티벌 운영 체크리스트"].map(text => el("button", { key: text, className: "chip", onClick: () => changeRequest(text) }, text))),
+      el("div", { className: "chips" }, ...["이번 주 일정 점검", "조합 강사 모집 안내문 초안", "페스티벌 운영 체크리스트"].map(text => el("button", { key: text, className: "chip", onClick: () => changeRequest(text) }, text))),
       el("details", { className: "office-disclosure" }, el("summary", null, "참고 파일 추가"), el("label", { className: "office-field" }, "파일 경로", el("input", { value: reference, onChange: e => changeReference(e.target.value), placeholder: "outputs/날짜/파일명.md" }))),
       el("button", { className: "primary", onClick: sendRequest, disabled: !request.trim() }, "지시 보내기"),
-      files.task && link("최근 수시 업무 결과", () => openDoc("task")));
+      files.task && el("div", { className: "report-line" }, el("span", null, "최근 수시 업무 결과 · " + files.task.date), download(files.task)));
+
     function approval() {
-      return el(Panel, { title: "기획안 검토·승인", aside: status?.date && el("small", null, status.date) },
-        ...[["plan","기획안 원문"],["review","품질검수 의견"]].filter(([key]) => files[key]).map(([key,label]) =>
-          el("details", { key, className: "office-disclosure" }, el("summary", null, label), read(files[key]))),
-        needsReview ? el("div", { className: "office-approval" },
-          el("fieldset", null, el("legend", null, "문서로 만들 기획안"), ...planOptions.map(plan =>
-            el("label", { className: "pick" + (plan.n === selectedPlan ? " on" : ""), key: plan.n },
-              el("input", { type: "radio", name: "pick", checked: selectedPlan === plan.n, onChange: () => choosePlan(plan.n) }),
-              el("span", null, el("b", null, "TOP " + plan.n + " · " + plan.title), el("small", null, [plan.verdict, plan.reason].filter(Boolean).join(" · ")))))),
+      if (!needsReview) return el(Panel, { title: "기획안 검토", aside: status?.date && el("small", null, status.date) },
+        el("p", { className: "office-empty" }, reviewTitle),
+        el("p", { className: "muted" }, "새 기획안은 매주 월·수 오전 9시에 올라옵니다. 승인한 문서는 업무 홈 › 정기 보고서에서 한글 파일로 받을 수 있습니다."));
+      return el("div", { className: "office-stack" },
+        el("div", { className: "plan-cards" }, ...plans.map(plan => {
+          const section = sections[plan.n];
+          const on = plan.n === selectedPlan;
+          return el("article", { key: plan.n, className: "plan-card" + (on ? " on" : "") },
+            el("label", { className: "plan-card-head" },
+              el("input", { type: "radio", name: "pick", checked: on, onChange: () => choosePlan(plan.n) }),
+              el("span", { className: "plan-rank" }, "TOP " + plan.n),
+              el("h2", null, section?.title || plan.title)),
+            el("div", { className: "plan-card-body" }, section ? el(api.Markdown, { text: section.body }) : el("p", null, plan.title)));
+        })),
+        el(Panel, { title: "승인" },
           el("label", { className: "office-field" }, "작성할 문서", el("input", { list: "doc-types", value: docType, onChange: e => changeType(e.target.value) })),
-          el("datalist", { id:"doc-types" }, ...api.docTypes.map(value => el("option", { key:value, value }))),
-          el("button", { className: "primary", onClick: approve, disabled: !docType.trim() || !planOptions.some(plan => plan.n === selectedPlan) }, "선택한 기획안 승인·문서 작성")) :
-          el("p", { className: "office-empty" }, reviewTitle), files.doc && link("작성된 문서 열기", () => openDoc("doc")));
-    }
-    function documents() {
-      return el(Panel, { title: "보고·문서" },
-        el(Nav, { secondary:true, label:"문서 종류", items:documentTabs.filter(([key]) => files[key] || key === visibleDocumentKey), active:visibleDocumentKey, choose:chooseDocument }),
-        doc && el("h3", { className: "doc-title" }, [doc.title,doc.date].filter(Boolean).join(" · ")),
-        downloads(doc), doc ? read(doc) : el("p", {className:"office-empty"}, "작성된 문서가 여기에 표시됩니다."),
-        doc && el("div", { className:"office-revision" }, el("label", { className:"office-field" }, "수정할 내용", el("input", { value:revision,onChange:e=>changeRevision(e.target.value) })), el("button", { disabled:!revision.trim(), onClick:sendRevision }, "수정 요청")));
+          el("datalist", { id: "doc-types" }, ...api.docTypes.map(value => el("option", { key: value, value }))),
+          el("button", { className: "primary", onClick: approve, disabled: !docType.trim() || !plans.some(plan => plan.n === selectedPlan) }, "선택한 기획안 승인·문서 작성"),
+          el("p", { className: "muted" }, "승인하면 AI가 문서를 작성해 업무 홈 › 정기 보고서에 한글 파일로 올립니다.")));
     }
     function operations() {
-      return el("div", {className:"office-stack"},
-        el(Panel, { title:"업무 진행", aside:link("아침 작업 실행",props.runMorning) }, el("p",null,status?.headline || "상태 확인 중"), el("div", {className:"office-stages"}, ...(status?.stages || []).map(step=>el("span",{key:step.id}, step.label + " · " + step.status)))),
-        el(Panel, { title:"에이전트 운영" }, el("p",null,"GPT는 조사·기획·작성을, Claude는 품질검수를 담당합니다."), el("p",{className:"muted"},status?.agents?.claude ? [status.agents.claude.status,status.agents.claude.reason].filter(Boolean).join(" · ") : "Claude 검수 연결 확인 전",
-          ), ...api.teams.map(team=>el("div",{className:"list-row",key:team.key},el("strong",null,team.name),el("span",null,status?.depts?.[team.key]?.label || team.role),el("small",null,status?.depts?.[team.key]?.status || "대기")))),
-        el(Panel,{title:"실행 기록 · PC 공통"},...(status?.runs || []).map((run,index)=>el("div",{className:"list-row",key:index},el("strong",null,run.name),el("small",null,run.when),el("span",null,run.result))),!status?.runs?.length && el("p",{className:"muted"}, "아직 실행 기록이 없습니다.")),
-        el(Panel,{title:"자동 실행 일정"},...(status?.schedule || []).map(item=>el("div",{className:"list-row",key:item.what},el("strong",null,item.what),el("small",null,item.when)))));
+      return el("div", { className: "office-stack" },
+        el(Panel, { title: "실행 기록" }, ...(status?.runs || []).map((run, index) => el("div", { className: "list-row", key: index }, el("strong", null, run.name), el("small", null, run.when), el("span", null, run.result))),
+          !status?.runs?.length && el("p", { className: "muted" }, "아직 실행 기록이 없습니다.")),
+        el(Panel, { title: "자동 실행 일정" }, ...[["기획안 TOP 2", "월·수 09:00"], ["일일 리포트", "매일 18:00"], ["주간업무보고 초안", "월 08:00"]]
+          .map(([what, when]) => el("div", { className: "list-row", key: what }, el("strong", null, what), el("small", null, when)))));
     }
-    return el("main", {className:"shell office-layout sw-layout"},
-      el(Header, {name:"SW 미래체험 본부", divisionNav:props.divisionNav, status, busy:props.busy, reload:props.reload, disconnect:props.disconnect, utilities:[["운영 현황",()=>setTab("operations")]]}),
-      el(Nav,{items:tabs,active:tab,choose:setTab,label:"SW 미래체험 업무 메뉴"}),
-      props.error && el("div",{className:"alert-box",role:"alert"},props.error),
-      tab === "home" && el("div",{className:"office-home-grid"},
-        el("div",{className:"office-stack"},reviewSummary,reportShelf),
-        el("div",{className:"office-stack"},
-          el(Panel,{title:"수시 업무",aside:link("업무 지시",()=>setTab("request"))},files.task ? el("div",{className:"report-line"},el("span",null,files.task.date+" 업무 결과"),link("열기",()=>openDoc("task"))) : el("p",{className:"muted"},"처리한 업무 결과가 여기에 표시됩니다.")),
-          el(Panel,{title:"운영 현황",aside:link("자세히",()=>setTab("operations"))},el("p",null,status?.runs?.[0] ? [status.runs[0].name,status.runs[0].result,status.runs[0].when].join(" · ") : "최근 실행 기록이 없습니다.")))),
-      tab === "approval" && approval(), tab === "documents" && documents(), tab === "request" && requestPanel, tab === "operations" && operations(),
-      props.notice && el("div",{className:"toast",role:"status"},props.notice));
+    return el("main", { className: "shell office-layout sw-layout" },
+      el(Header, { name: "SW 미래체험 본부", divisionNav: props.divisionNav, status, busy: props.busy, reload: props.reload, disconnect: props.disconnect, utilities: [["실행 기록", () => setTab("operations")]] }),
+      el(Nav, { items: tabs, active: tab, choose: setTab, label: "SW 미래체험 업무 메뉴" }),
+      props.error && el("div", { className: "alert-box", role: "alert" }, props.error),
+      tab === "home" && el("div", { className: "office-home-grid" },
+        el("div", { className: "office-stack" }, reviewSummary),
+        el("div", { className: "office-stack" }, reportShelf)),
+      tab === "approval" && approval(), tab === "request" && requestPanel, tab === "operations" && operations(),
+      props.notice && el("div", { className: "toast", role: "status" }, props.notice));
   };
 };

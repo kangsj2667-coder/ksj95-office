@@ -1,0 +1,16 @@
+/* 기획안 카드: 읽기 쉬운 글자 크기·줄 간격·여백 */
+.sw-layout .plan-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px}
+.sw-layout .plan-card{background:#fff;border:2px solid var(--line,#e3e6ea);border-radius:16px;padding:clamp(18px,2.6vw,30px);font-size:17px;line-height:1.85;color:#1d2228}
+.sw-layout .plan-card.on{border-color:var(--deep,#1f3b57);box-shadow:0 4px 18px rgba(31,59,87,.12)}
+.sw-layout .plan-card-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--line,#e3e6ea)}
+.sw-layout .plan-card-head input{width:20px;height:20px;margin:0}
+.sw-layout .plan-rank{background:var(--deep,#1f3b57);color:#fff;border-radius:999px;padding:2px 12px;font-size:14px;font-weight:700}
+.sw-layout .plan-card-head h2{flex-basis:100%;margin:4px 0 0;font-size:22px!important;line-height:1.45;letter-spacing:-.03em}
+.sw-layout .plan-card-body ul{padding-left:4px;margin:0;list-style:none}
+.sw-layout .plan-card-body li{margin:0 0 14px}
+.sw-layout .plan-card-body li li{margin:6px 0 0;padding-left:6px}
+.sw-layout .plan-card-body ol{padding-left:22px;margin:6px 0 0}
+.sw-layout .plan-card-body strong,.sw-layout .plan-card-body b{color:var(--deep,#1f3b57)}
+.sw-layout .plan-card-body p{margin:0 0 12px}
+.sw-layout .report-line .office-downloads{margin:0}
+@media (max-width:640px){.sw-layout .plan-card{font-size:16px}.sw-layout .plan-card-head h2{font-size:19px!important}}
