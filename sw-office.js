@@ -30,7 +30,7 @@ window.createSwOffice = function (React, layout, api) {
           const date = r.sourcePath.split("/")[1];
           const title = String(r.title || "승인 문서").replace(/^문서작성팀\s*·\s*/, "").replace(/\s*·\s*\d{4}-\d{2}-\d{2}$/, "");
           const markdown = await raw(r.sourcePath);
-          const heading = (markdown.match(/^#\s+(.+)$/m) || [])[1];
+          const heading = [...markdown.matchAll(/^#\s+(.+)$/gm)].map(m => m[1]).find(h => !/^\S*팀\s*·/.test(h));
           const realTitle = heading ? heading.replace(/[*_`]/g, "").trim() : title;
           return { title: realTitle, date, path: r.sourcePath, markdown };
         }));
@@ -107,7 +107,7 @@ window.createSwOffice = function (React, layout, api) {
       }).filter(Boolean).sort((a, b) => a.d - b.d);
     })();
     const tagClass = result => "run-tag " + (result === "완료" ? "ok" : result === "실패" ? "bad" : "run");
-    const progressPanel = el(Panel, { title: "업무 진행 현황", aside: el("button", { type: "button", className: "office-link", onClick: () => setTab("operations") }, "전체 기록 ›") },
+    const progressPanel = el(Panel, { title: "업무 진행 현황", aside: el("button", { type: "button", className: "office-link", onClick: () => setTab("operations") }, "전체 기록") },
       recentRuns.length ? el("ul", { className: "run-list" }, ...recentRuns.map((run, i) => el("li", { key: i },
         el("div", null, el("strong", null, run.label), el("small", null, run.when)),
         el("span", { className: tagClass(run.result) }, run.result))))
