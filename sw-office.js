@@ -29,7 +29,10 @@ window.createSwOffice = function (React, layout, api) {
         const list = await Promise.all(records.map(async r => {
           const date = r.sourcePath.split("/")[1];
           const title = String(r.title || "승인 문서").replace(/^문서작성팀\s*·\s*/, "").replace(/\s*·\s*\d{4}-\d{2}-\d{2}$/, "");
-          return { title, date, path: r.sourcePath, markdown: await raw(r.sourcePath) };
+          const markdown = await raw(r.sourcePath);
+          const heading = (markdown.match(/^#\s+(.+)$/m) || [])[1];
+          const realTitle = heading ? heading.replace(/[*_`]/g, "").trim() : title;
+          return { title: realTitle, date, path: r.sourcePath, markdown };
         }));
         if (alive) setDocs(list);
       })().catch(() => {});
@@ -74,9 +77,44 @@ window.createSwOffice = function (React, layout, api) {
       document ? download(document) : el("span", { className: "neutral-tag" }, status ? "작성 전" : "확인 중"));
     const reportShelf = el(Panel, { title: "정기 보고서" },
       shelfRow("report", "일일 리포트", files.report?.date || "매일 18시 자동 작성", files.report),
-      ...(docs.length ? docs.map((d, i) => shelfRow("doc" + i, "승인 문서 · " + d.title, d.date, d))
+      ...(docs.length ? docs.map((d, i) => shelfRow("doc" + i, d.title, "승인 문서 · " + d.date, d))
         : [shelfRow("doc", "승인 문서", "기획안을 승인하면 자동 작성", null)]),
-      files.task && shelfRow("task", "수시 업무 결과", files.task.date, files.task));
+      shelfRow("task", "수시 업무 결과", files.task?.date || "업무 지시를 보내면 여기에 올라옵니다", files.task || null));
+
+    const friendly = run => {
+      const t = String(run.full || run.name || "");
+      if (/AI Office|runner|startup/i.test(t)) return null;
+      if (/승인\]/.test(t)) return "기획안 승인 · 문서 작성";
+      const job = t.match(/\[GPT 실행\]\s*([^|]+?)(?:\s+\[GPT|$)/);
+      if (job) return /주간업무보고/.test(job[1]) ? "주간업무보고 초안" : "업무 지시 · " + job[1].trim().slice(0, 24);
+      if (/0 0 \* \* 1,3|아침 실행/.test(t)) return "기획안 TOP 2 작성";
+      if (/0 0 \* \* 2,4/.test(t)) return "정부지원사업 공고 조사";
+      if (/0 9 \* \* \*|한 장 리포트/.test(t)) return "일일 리포트";
+      if (/\* \* 0|\* \* 1|주간/.test(t)) return "주간업무보고 초안";
+      return null;
+    };
+    const recentRuns = (status?.runs || []).map(run => ({ ...run, label: friendly(run) })).filter(run => run.label).slice(0, 5);
+    const nextRuns = (() => {
+      const now = new Date(Date.now() + 9 * 3600e3); // 한국 시간
+      const plan = [["일일 리포트", [0,1,2,3,4,5,6], 18], ["주간업무보고 초안", [1], 8], ["기획안 TOP 2", [1,3], 9]];
+      const days = ["일","월","화","수","목","금","토"];
+      return plan.map(([what, dows, hour]) => {
+        for (let add = 0; add < 8; add++) {
+          const d = new Date(now); d.setUTCDate(now.getUTCDate() + add); d.setUTCHours(hour, 0, 0, 0);
+          if (dows.includes(d.getUTCDay()) && d > now) return { what, d, text: (add === 0 ? "오늘" : add === 1 ? "내일" : (d.getUTCMonth() + 1) + "/" + d.getUTCDate() + "(" + days[d.getUTCDay()] + ")") + " " + String(hour).padStart(2, "0") + ":00" };
+        }
+        return null;
+      }).filter(Boolean).sort((a, b) => a.d - b.d);
+    })();
+    const tagClass = result => "run-tag " + (result === "완료" ? "ok" : result === "실패" ? "bad" : "run");
+    const progressPanel = el(Panel, { title: "업무 진행 현황", aside: el("button", { type: "button", className: "office-link", onClick: () => setTab("operations") }, "전체 기록 ›") },
+      recentRuns.length ? el("ul", { className: "run-list" }, ...recentRuns.map((run, i) => el("li", { key: i },
+        el("div", null, el("strong", null, run.label), el("small", null, run.when)),
+        el("span", { className: tagClass(run.result) }, run.result))))
+        : el("p", { className: "muted" }, status ? "최근 실행 기록이 없습니다." : "확인 중…"),
+      el("h3", { className: "run-subhead" }, "다음 자동 실행"),
+      el("ul", { className: "run-list next" }, ...nextRuns.map(n => el("li", { key: n.what }, el("strong", null, n.what), el("small", null, n.text)))),
+      el("p", { className: "muted small-note" }, "PC가 켜져 있고 윈도우에 로그인된 상태에서 자동 실행됩니다."));
 
     const requestPanel = el(Panel, { title: "새 업무 지시" },
       el("label", { className: "office-field" }, "업무 내용", el("textarea", { rows: 4, value: request, placeholder: "예: 다음 주 교육 운영 체크리스트를 작성해줘", onChange: e => changeRequest(e.target.value) })),
@@ -100,7 +138,7 @@ window.createSwOffice = function (React, layout, api) {
               el("h2", null, section?.title || plan.title)),
             el("div", { className: "plan-card-body" }, section ? el(api.Markdown, { text: section.body }) : el("p", null, plan.title)));
         })),
-        el(Panel, { title: "승인" },
+        el(Panel, { title: plans.some(plan => plan.n === selectedPlan) ? "승인 · TOP " + selectedPlan + " 선택됨" : "승인 · 위 카드에서 하나를 고르세요", className: "approve-bar" },
           el("label", { className: "office-field" }, "작성할 문서", el("input", { list: "doc-types", value: docType, onChange: e => changeType(e.target.value) })),
           el("datalist", { id: "doc-types" }, ...api.docTypes.map(value => el("option", { key: value, value }))),
           el("button", { className: "primary", onClick: approve, disabled: !docType.trim() || !plans.some(plan => plan.n === selectedPlan) }, "선택한 기획안 승인·문서 작성"),
@@ -108,7 +146,7 @@ window.createSwOffice = function (React, layout, api) {
     }
     function operations() {
       return el("div", { className: "office-stack" },
-        el(Panel, { title: "실행 기록" }, ...(status?.runs || []).map((run, index) => el("div", { className: "list-row", key: index }, el("strong", null, run.name), el("small", null, run.when), el("span", null, run.result))),
+        el(Panel, { title: "실행 기록" }, ...(status?.runs || []).map((run, index) => el("div", { className: "list-row", key: index }, el("strong", null, friendly(run) || run.name), el("small", null, run.when), el("span", null, run.result))),
           !status?.runs?.length && el("p", { className: "muted" }, "아직 실행 기록이 없습니다.")),
         el(Panel, { title: "자동 실행 일정" }, ...[["기획안 TOP 2", "월·수 09:00"], ["일일 리포트", "매일 18:00"], ["주간업무보고 초안", "월 08:00"]]
           .map(([what, when]) => el("div", { className: "list-row", key: what }, el("strong", null, what), el("small", null, when)))));
@@ -119,7 +157,7 @@ window.createSwOffice = function (React, layout, api) {
       props.error && el("div", { className: "alert-box", role: "alert" }, props.error),
       tab === "home" && el("div", { className: "office-home-grid" },
         el("div", { className: "office-stack" }, reviewSummary, requestPanel),
-        el("div", { className: "office-stack" }, reportShelf)),
+        el("div", { className: "office-stack" }, reportShelf, progressPanel)),
       tab === "approval" && approval(), tab === "operations" && operations(),
       props.notice && el("div", { className: "toast", role: "status" }, props.notice));
   };

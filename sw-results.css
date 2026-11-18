@@ -14,3 +14,17 @@
 .sw-layout .plan-card-body p{margin:0 0 12px}
 .sw-layout .report-line .office-downloads{margin:0}
 @media (max-width:640px){.sw-layout .plan-card{font-size:16px}.sw-layout .plan-card-head h2{font-size:19px!important}}
+/* 업무 진행 현황 · 승인 바 (2026-11-18) */
+.sw-layout .run-list{list-style:none;margin:0;padding:0}
+.sw-layout .run-list li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line,#e3e6ea)}
+.sw-layout .run-list li:first-child{border-top:0}
+.sw-layout .run-list strong{display:block;font-size:15px}
+.sw-layout .run-list small{color:var(--mute,#66727f);font-size:13px}
+.sw-layout .run-list.next li{padding:7px 0}
+.sw-layout .run-subhead{font-size:14px;margin:18px 0 4px;color:var(--mute,#66727f)}
+.sw-layout .run-tag{flex-shrink:0;font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:#fdf0dc;color:#b45309}
+.sw-layout .run-tag.ok{background:#e4f5ea;color:#15803d}
+.sw-layout .run-tag.bad{background:#fde8e8;color:#b91c1c}
+.sw-layout .small-note{font-size:13px;margin:12px 0 0}
+.sw-layout .approve-bar{position:sticky;bottom:12px;z-index:5;box-shadow:0 -4px 24px rgba(16,24,40,.12);border:2px solid var(--deep,#1f3b57)}
+.sw-layout .report-line h3{line-height:1.45}
