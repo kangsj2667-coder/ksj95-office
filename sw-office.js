@@ -1,8 +1,8 @@
-/* SW 미래체험 본부: 대표는 결과만 본다. 기획안 TOP 2, 정기 보고서(한글) 다운로드, 업무 지시만 노출한다. */
+/* SW 미래체험 본부: 대표는 결과만 본다. 업무 홈에 기획안 검토 요약·업무 지시·정기 보고서(한글)를 모아 둔다. */
 window.createSwOffice = function (React, layout, api) {
   const el = React.createElement;
   const { Header, Nav, Panel, Downloads, LinkButton } = layout;
-  const tabs = [["home", "업무 홈"], ["approval", "기획안 검토"], ["request", "업무 지시"]];
+  const tabs = [["home", "업무 홈"], ["approval", "기획안 검토"]];
   const weeklyKeys = new Set(["weeklyDraft", "weekly"]);
   const API = "https://api.github.com/repos/kangsj2667-coder/ksj95/contents/";
   const token = () => { try { return localStorage.getItem("swmc_token") || ""; } catch { return ""; } };
@@ -83,7 +83,7 @@ window.createSwOffice = function (React, layout, api) {
       el("div", { className: "chips" }, ...["이번 주 일정 점검", "조합 강사 모집 안내문 초안", "페스티벌 운영 체크리스트"].map(text => el("button", { key: text, className: "chip", onClick: () => changeRequest(text) }, text))),
       el("details", { className: "office-disclosure" }, el("summary", null, "참고 파일 추가"), el("label", { className: "office-field" }, "파일 경로", el("input", { value: reference, onChange: e => changeReference(e.target.value), placeholder: "outputs/날짜/파일명.md" }))),
       el("button", { className: "primary", onClick: sendRequest, disabled: !request.trim() }, "지시 보내기"),
-      files.task && el("div", { className: "report-line" }, el("span", null, "최근 수시 업무 결과 · " + files.task.date), download(files.task)));
+      el("p", { className: "muted" }, "결과는 오른쪽 정기 보고서의 '수시 업무 결과'에 한글 파일로 올라옵니다."));
 
     function approval() {
       if (!needsReview) return el(Panel, { title: "기획안 검토", aside: status?.date && el("small", null, status.date) },
@@ -118,9 +118,9 @@ window.createSwOffice = function (React, layout, api) {
       el(Nav, { items: tabs, active: tab, choose: setTab, label: "SW 미래체험 업무 메뉴" }),
       props.error && el("div", { className: "alert-box", role: "alert" }, props.error),
       tab === "home" && el("div", { className: "office-home-grid" },
-        el("div", { className: "office-stack" }, reviewSummary),
+        el("div", { className: "office-stack" }, reviewSummary, requestPanel),
         el("div", { className: "office-stack" }, reportShelf)),
-      tab === "approval" && approval(), tab === "request" && requestPanel, tab === "operations" && operations(),
+      tab === "approval" && approval(), tab === "operations" && operations(),
       props.notice && el("div", { className: "toast", role: "status" }, props.notice));
   };
 };
