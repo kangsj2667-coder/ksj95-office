@@ -28,3 +28,10 @@
 .sw-layout .small-note{font-size:13px;margin:12px 0 0}
 .sw-layout .approve-bar{position:sticky;bottom:12px;z-index:5;box-shadow:0 -4px 24px rgba(16,24,40,.12);border:2px solid var(--deep,#1f3b57)}
 .sw-layout .report-line h3{line-height:1.45}
+.sw-layout .approve-bar{display:grid;grid-template-columns:auto minmax(200px,1fr) auto;align-items:end;gap:8px 16px;padding:14px 20px!important}
+.sw-layout .approve-bar .panel-heading{align-self:center;margin:0}
+.sw-layout .approve-bar .panel-heading h2{font-size:17px!important;margin:0;white-space:nowrap}
+.sw-layout .approve-bar .office-field{margin:0}
+.sw-layout .approve-bar .primary{margin:0;white-space:nowrap}
+.sw-layout .approve-bar .muted{display:none}
+@media (max-width:760px){.sw-layout .approve-bar{grid-template-columns:1fr;bottom:6px}}
